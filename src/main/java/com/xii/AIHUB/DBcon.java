@@ -24,7 +24,9 @@ import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFFont;
@@ -41,7 +43,7 @@ public class DBcon {
 	public DBcon() {
 		try {
 			Class.forName(driver);
-			conn = DriverManager.getConnection("jdbc:mariadb://아아피:포트/디비", "아디", "비번");
+			conn = DriverManager.getConnection("jdbc:mariadb://ip:포트/데이터베이스", "아디", "비번");
 
 			if (conn != null) {
 				System.out.println("DB 접속 성공 " + conn);
@@ -65,11 +67,17 @@ public class DBcon {
 	
 	public void selectList() throws SQLException {
 		
-		String strat_date_sql = "2021/08/01";
+		String strat_date_sql = "2021/08/06";	//ai hub 51 번  변경된 날
 		
 		SimpleDateFormat format_sql = new SimpleDateFormat("yyyy/MM/dd");
 		Date todaytDate_sql = new Date();
 		String today_sql = format_sql.format(todaytDate_sql);
+		
+		Date yesterDay_sql = new Date();
+		yesterDay_sql = new Date(yesterDay_sql.getTime()+(1000*60*60*24*-1));
+		String yesterday_sql = format_sql.format(yesterDay_sql);
+		
+		
 		
 		String sql_worker = "SELECT USER_ID\r\n"
 				+ "	  ,ACCOUNT\r\n"
@@ -94,7 +102,7 @@ public class DBcon {
 				+ "              (    -- T100\r\n"
 				+ "                 SELECT USER_ID, USER_NAME, FIRST_WORK_DATE, WORK_DATE, IMAGE_ASSIGN_CNT, IMG_CNT,IMG_INSPECT_1_CNT, IMG_INSPECT_2_CNT,IMG_REJECT_CNT, WORK_START_TIME, WORK_END_TIME\r\n"
 				+ "                   FROM TB_AIHUB_PROGRESS\r\n"
-				+ "                  WHERE WORK_DATE BETWEEN '"+strat_date_sql+"' AND '"+today_sql+"'\r\n"
+				+ "                  WHERE WORK_DATE BETWEEN '"+strat_date_sql+"' AND '"+yesterday_sql+"'\r\n"
 				+ "               ) T100  \r\n"
 				+ "          RIGHT JOIN  \r\n"
 				+ "               (    -- T200\r\n"
@@ -111,7 +119,7 @@ public class DBcon {
 				+ "                               ) T1\r\n"
 				+ "                              WHERE yyyymmdd <= '2021/12/31' \r\n"
 				+ "                             ) T10\r\n"
-				+ "                       WHERE yyyymmdd BETWEEN '"+strat_date_sql+"' AND '"+today_sql+"' \r\n"
+				+ "                       WHERE yyyymmdd BETWEEN '"+strat_date_sql+"' AND '"+yesterday_sql+"' \r\n"
 				+ "                  ) T30                   \r\n"
 				+ "                   CROSS JOIN ( SELECT USER_ID, ACCOUNT FROM USER WHERE LEVEL_CD = 2 ) T20\r\n"
 				+ "                ) T200 \r\n"
@@ -150,7 +158,7 @@ public class DBcon {
 				+ "              (    -- T100\r\n"
 				+ "                 SELECT INSPECTOR_ID, ACCOUNT, LEVEL_CD, FIRST_WORK_DATE, CREATED_DATE, ASSIGN_CNT, INS_COMPLETE_1_CNT, INS_COMPLETE_2_CNT ,INS_REJECT_CNT, WORK_START_TIME, WORK_END_TIME\r\n"
 				+ "                   FROM TB_AIHUB_COMFIRM\r\n"
-				+ "                  WHERE CREATED_DATE BETWEEN '"+strat_date_sql+"' AND '"+today_sql+"'\r\n"
+				+ "                  WHERE CREATED_DATE BETWEEN '"+strat_date_sql+"' AND '"+yesterday_sql+"'\r\n"
 				+ "               ) T100  \r\n"
 				+ "          RIGHT JOIN  \r\n"
 				+ "               (    -- T200\r\n"
@@ -167,7 +175,7 @@ public class DBcon {
 				+ "                               ) T1\r\n"
 				+ "                              WHERE yyyymmdd <= '2021/12/31' \r\n"
 				+ "                             ) T10\r\n"
-				+ "                       WHERE yyyymmdd BETWEEN '"+strat_date_sql+"' AND '"+today_sql+"' \r\n"
+				+ "                       WHERE yyyymmdd BETWEEN '"+strat_date_sql+"' AND '"+yesterday_sql+"' \r\n"
 				+ "                  ) T30                   \r\n"
 				+ "                   CROSS JOIN ( SELECT USER_ID, ACCOUNT,LEVEL_CD  FROM USER WHERE LEVEL_CD IN (3, 4) ) T20\r\n"
 				+ "                ) T200 \r\n"
@@ -281,6 +289,11 @@ public class DBcon {
 		Date todaytDate = new Date();
 		String today = format.format(todaytDate);
 		
+		Date yesterDay = new Date();
+		yesterDay = new Date(yesterDay.getTime()+(1000*60*60*24*-1));
+		String yesterday = format.format(yesterDay);
+		
+		
 		//.xlsx 확장자 지원
 		XSSFWorkbook xssfWb = null; 
 		XSSFSheet xssfSheet = null; 	//작업자 워크시트
@@ -325,17 +338,23 @@ public class DBcon {
 			cellStyle_Title.setBorderBottom(BorderStyle.THIN); //테두리 아래쪽
 			cellStyle_Title.setBorderLeft(BorderStyle.THIN); //테두리 왼쪽
 			cellStyle_Title.setBorderRight(BorderStyle.THIN); //테두리 오른쪽
+			cellStyle_Title.setFillForegroundColor(IndexedColors.YELLOW.getIndex());  // 배경색
+			cellStyle_Title.setFillPattern(FillPatternType.SOLID_FOREGROUND);	//배경색
 			cellStyle_Title.setFont(font); // cellStle에 font를 적용
 			cellStyle_Title.setAlignment(HorizontalAlignment.CENTER); // 정렬
 			
 			//셀병합
 			xssfSheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 11)); //첫행, 마지막행, 첫열, 마지막열( 0번째 행의 0~11번째 컬럼을 병합한다)
 			
+			// 틀고정
+			xssfSheet.createFreezePane(0, 2);	// 0열, 2행 고정
+
+			
 			//타이틀 생성
 			xssfRow = xssfSheet.createRow(rowNo++); //행 객체 추가
 			xssfCell = xssfRow.createCell((short) 0); // 추가한 행에 셀 객체 추가
 			xssfCell.setCellStyle(cellStyle_Title); // 셀에 스타일 지정
-			xssfCell.setCellValue("AI HUB - 51 Worker 능률 " + today ); // 데이터 입력
+			xssfCell.setCellValue("AI HUB - 51 Worker 능률 " + yesterday ); // 데이터 입력
 			
 			//xssfRow = xssfSheet.createRow(rowNo++);  // 빈행 추가
 			
@@ -350,6 +369,8 @@ public class DBcon {
 			cellStyle_Body.setBorderBottom(BorderStyle.THIN); //테두리 아래쪽
 			cellStyle_Body.setBorderLeft(BorderStyle.THIN); //테두리 왼쪽
 			cellStyle_Body.setBorderRight(BorderStyle.THIN); //테두리 오른쪽
+			cellStyle_Body.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex());  // 배경색
+			cellStyle_Body.setFillPattern(FillPatternType.SOLID_FOREGROUND);	//배경색
 			cellStyle_Body.setFont(font2); // cellStle에 font를 적용
 		
 			
@@ -492,11 +513,14 @@ public class DBcon {
 			//셀병합
 			xssfSheet_ins.addMergedRegion(new CellRangeAddress(0, 0, 0, 12)); //첫행, 마지막행, 첫열, 마지막열( 0번째 행의 0~12번째 컬럼을 병합한다)
 			
+			// 틀고정
+			xssfSheet_ins.createFreezePane(0, 2);	// 0열, 2행 고정
+			
 			//타이틀 생성
 			xssfRow_ins = xssfSheet_ins.createRow(rowNo_ins++); //행 객체 추가
 			xssfCell_ins = xssfRow_ins.createCell((short) 0); // 추가한 행에 셀 객체 추가
 			xssfCell_ins.setCellStyle(cellStyle_Title); // 셀에 스타일 지정
-			xssfCell_ins.setCellValue("AI HUB - 51 검수자 능률 " + today ); // 데이터 입력
+			xssfCell_ins.setCellValue("AI HUB - 51 검수자 능률 " + yesterday ); // 데이터 입력
 			
 			
 			//헤더 생성
@@ -622,12 +646,21 @@ public class DBcon {
 			//셀병합
 			xssfSheet_ca.addMergedRegion(new CellRangeAddress(0, 0, 0, 2)); //첫행, 마지막행, 첫열, 마지막열( 0번째 행의 0~2번째 컬럼을 병합한다)
 			
+			// 틀고정
+			xssfSheet_ca.createFreezePane(0, 2);	// 0열, 2행 고정
+			
 			//타이틀 생성
 			xssfRow_ca = xssfSheet_ca.createRow(rowNo_ca++); //행 객체 추가
 			xssfCell_ca = xssfRow_ca.createCell((short) 0); // 추가한 행에 셀 객체 추가
 			xssfCell_ca.setCellStyle(cellStyle_Title); // 셀에 스타일 지정
 			xssfCell_ca.setCellValue("카테고리별 1차/2차 검수완료"); // 데이터 입력
 			
+			//타이틀 옆 설명 추가
+			xssfCell_ca = xssfRow_ca.createCell((short) 4); 
+			xssfCell_ca.setCellStyle(cellStyle_content);
+			SimpleDateFormat format_all = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+			String today_all = format_all.format(todaytDate);
+			xssfCell_ca.setCellValue("날짜와 관련 없이 엑셀 출력한 시간에 검수완료한 카운트입니다. 파일 출력 시간 : " + today_all );
 			
 			//헤더 생성
 			xssfRow_ca = xssfSheet_ca.createRow(rowNo_ca++); //헤더 01
@@ -662,7 +695,7 @@ public class DBcon {
 	
 			String path = "C:/test_out/";
 					
-			String localFile = path + "AI_HUB_51[" + today + "]" + ".xlsx";
+			String localFile = path + "AI_HUB_51[" + yesterday + "]" + ".xlsx";
 			
 			File file = new File(localFile);
 			FileOutputStream fos = null;
