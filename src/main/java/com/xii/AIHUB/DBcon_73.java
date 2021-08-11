@@ -1,28 +1,19 @@
 package com.xii.AIHUB;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.text.Format;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 
-import org.apache.poi.hssf.usermodel.HSSFCell;
 import org.apache.poi.hssf.usermodel.HSSFFont;
-import org.apache.poi.hssf.usermodel.HSSFRow;
-import org.apache.poi.hssf.usermodel.HSSFSheet;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.BorderStyle;
-import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.HorizontalAlignment;
@@ -34,20 +25,47 @@ import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-public class DBcon {
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
+
+public class DBcon_73 {
+
 	String driver = "org.mariadb.jdbc.Driver";
 	Connection conn = null;		// DB 접속 객체선언
 	PreparedStatement pstmt = null;		// sql 실행할 객체 선언
 	ResultSet rs = null;		// sql 실행결과를 담을 객체 선언
-
-	public static void main(String[] args) {
-		DBcon dbcon = new DBcon();
-	}
 	
-	public DBcon() {
+	private Session session;
+	
+	public static void main(String[] args) {
+		DBcon_73 dbcon73 = new DBcon_73();
+	}
+
+	public DBcon_73() {
+		
+		String SSHhost = "";
+		String DBhost = "";
+		String localhost ="127.0.0.1";
+		int port = 3306;
+		
+		
 		try {
+			JSch jsch = new JSch();
+			//ssh 로 우선 접속후 port 포워딩을 통해서 mariaDB에 붙인다
+			
+			session = jsch.getSession("SSH아이디", SSHhost, "SSH포트");
+			session.setPassword("SSH비번");
+			System.out.println("SSH Connection...");			
+			session.setConfig("StrictHostKeyChecking", "no");
+
+			session.connect();
+			
+			int forward_port = session.setPortForwardingL(0, localhost, 3306); //127.0.0.1/  0으로 접근한 포트를 연결HOST/3306으로 포트포워딩
+			System.out.println("localhost: "+forward_port+" -> "+localhost+":"+port);
+
 			Class.forName(driver);
-			conn = DriverManager.getConnection("jdbc:mariadb://아이피:포트/디비이름", "아이디", "비번");
+			conn = DriverManager.getConnection("jdbc:mariadb://"+localhost+":"+forward_port+"/데이터베이스이름", "디비유저", "디비비번");
 
 			if (conn != null) {
 				System.out.println("DB 접속 성공 " + conn);
@@ -55,20 +73,24 @@ public class DBcon {
 				selectList();
 			}
 
+		} catch (JSchException e) { 
+			e.printStackTrace();
 		} catch (ClassNotFoundException e) {
 			System.out.println("드라이버 로드 실패");
 		} catch (SQLException e) {
 			System.out.println("DB 접속 실패");
 			e.printStackTrace();
 		}
+
+	}
+	
+	public void closeSSH() {
+		session.disconnect();
 	}
 
-	
-
-	
 	public void selectList() throws SQLException {
 		
-		String strat_date_sql = "2021/08/06";	//ai hub 51 번  변경된 날
+		String strat_date_sql = "2021/08/11";	//ai hub 73 번  변경된 날
 		
 		SimpleDateFormat format_sql = new SimpleDateFormat("yyyy/MM/dd");
 		Date todaytDate_sql = new Date();
@@ -115,7 +137,7 @@ public class DBcon {
 				+ "                               FROM ( -- T1\r\n"
 				+ "                                     SELECT @N := @N +1 AS n ,  \r\n"
 				+ "                                            DATE_FORMAT( DATE_ADD( '2021-07-01' , interval @N -1 day),'%Y/%m/%d') as yyyymmdd  \r\n"
-				+ "                                       FROM (aihub_image_51.`DATA`  ), (SELECT @N:=0 FROM dual ) a  \r\n"
+				+ "                                       FROM (aihub_image_73.`DATA`  ), (SELECT @N:=0 FROM dual ) a  \r\n"
 				+ "                                      LIMIT 500  \r\n"
 				+ "                               ) T1\r\n"
 				+ "                              WHERE yyyymmdd <= '2021/12/31' \r\n"
@@ -171,7 +193,7 @@ public class DBcon {
 				+ "                               FROM ( -- T1\r\n"
 				+ "                                     SELECT @N := @N +1 AS n ,  \r\n"
 				+ "                                            DATE_FORMAT( DATE_ADD( '2021-07-01' , interval @N -1 day),'%Y/%m/%d') as yyyymmdd  \r\n"
-				+ "                                       FROM (aihub_image_51.`DATA`  ), (SELECT @N:=0 FROM dual ) a  \r\n"
+				+ "                                       FROM (aihub_image_73.`DATA`  ), (SELECT @N:=0 FROM dual ) a  \r\n"
 				+ "                                      LIMIT 500  \r\n"
 				+ "                               ) T1\r\n"
 				+ "                              WHERE yyyymmdd <= '2021/12/31' \r\n"
@@ -310,7 +332,7 @@ public class DBcon {
 			int rowNo = 0; // 행 갯수 
 			// 워크북 생성
 			xssfWb = new XSSFWorkbook();
-			xssfSheet = xssfWb.createSheet("AI Hub-51 Worker"); // 워크시트 이름
+			xssfSheet = xssfWb.createSheet("AI Hub-73 Worker"); // 워크시트 이름
 			
 			
 			xssfSheet.setColumnWidth(0, (xssfSheet.getColumnWidth(0))+(short)2048); // 0번째 컬럼 넓이 조절
@@ -338,7 +360,7 @@ public class DBcon {
 			cellStyle_Title.setBorderBottom(BorderStyle.THIN); //테두리 아래쪽
 			cellStyle_Title.setBorderLeft(BorderStyle.THIN); //테두리 왼쪽
 			cellStyle_Title.setBorderRight(BorderStyle.THIN); //테두리 오른쪽
-			cellStyle_Title.setFillForegroundColor(IndexedColors.YELLOW.getIndex());  // 배경색
+			cellStyle_Title.setFillForegroundColor(IndexedColors.LEMON_CHIFFON.getIndex());  // 배경색
 			cellStyle_Title.setFillPattern(FillPatternType.SOLID_FOREGROUND);	//배경색
 			cellStyle_Title.setFont(font); // cellStle에 font를 적용
 			cellStyle_Title.setAlignment(HorizontalAlignment.CENTER); // 정렬
@@ -354,7 +376,7 @@ public class DBcon {
 			xssfRow = xssfSheet.createRow(rowNo++); //행 객체 추가
 			xssfCell = xssfRow.createCell((short) 0); // 추가한 행에 셀 객체 추가
 			xssfCell.setCellStyle(cellStyle_Title); // 셀에 스타일 지정
-			xssfCell.setCellValue("AI HUB - 51 Worker 능률 " + yesterday ); // 데이터 입력
+			xssfCell.setCellValue("AI HUB - 73 Worker 능률 " + yesterday ); // 데이터 입력
 			
 			//xssfRow = xssfSheet.createRow(rowNo++);  // 빈행 추가
 			
@@ -369,7 +391,7 @@ public class DBcon {
 			cellStyle_Body.setBorderBottom(BorderStyle.THIN); //테두리 아래쪽
 			cellStyle_Body.setBorderLeft(BorderStyle.THIN); //테두리 왼쪽
 			cellStyle_Body.setBorderRight(BorderStyle.THIN); //테두리 오른쪽
-			cellStyle_Body.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex());  // 배경색
+			cellStyle_Body.setFillForegroundColor(IndexedColors.ROSE.getIndex());  // 배경색
 			cellStyle_Body.setFillPattern(FillPatternType.SOLID_FOREGROUND);	//배경색
 			cellStyle_Body.setFont(font2); // cellStle에 font를 적용
 		
@@ -492,7 +514,7 @@ public class DBcon {
 				xssfCell.setCellValue(workerList.get(i)[11]);
 			}
 /*		---------------------------워크 시트 2 검수자 -----------------------------------------------------------------------		*/			
-			xssfSheet_ins = xssfWb.createSheet("AI Hub-51 검수자"); // 워크시트 생성
+			xssfSheet_ins = xssfWb.createSheet("AI Hub-73 검수자"); // 워크시트 생성
 			int rowNo_ins = 0; // 행 갯수 
 			
 			xssfSheet_ins.setColumnWidth(0, (xssfSheet_ins.getColumnWidth(0))+(short)2048); // 0번째 컬럼 넓이 조절
@@ -520,7 +542,7 @@ public class DBcon {
 			xssfRow_ins = xssfSheet_ins.createRow(rowNo_ins++); //행 객체 추가
 			xssfCell_ins = xssfRow_ins.createCell((short) 0); // 추가한 행에 셀 객체 추가
 			xssfCell_ins.setCellStyle(cellStyle_Title); // 셀에 스타일 지정
-			xssfCell_ins.setCellValue("AI HUB - 51 검수자 능률 " + yesterday ); // 데이터 입력
+			xssfCell_ins.setCellValue("AI HUB - 73 검수자 능률 " + yesterday ); // 데이터 입력
 			
 			
 			//헤더 생성
@@ -635,10 +657,10 @@ public class DBcon {
 			}
 
 /*		---------------------------워크 시트 3 카테고리 -----------------------------------------------------------------------		*/			
-			xssfSheet_ca = xssfWb.createSheet("AI Hub-51 카테고리"); // 워크시트 생성
+			xssfSheet_ca = xssfWb.createSheet("AI Hub-73 카테고리"); // 워크시트 생성
 			int rowNo_ca = 0; // 행 갯수 
 			
-			xssfSheet_ca.setColumnWidth(0, (xssfSheet_ca.getColumnWidth(0))+(short)2048); // 0번째 컬럼 넓이 조절
+			xssfSheet_ca.setColumnWidth(0, (xssfSheet_ca.getColumnWidth(0))+(short)4096); // 0번째 컬럼 넓이 조절
 			xssfSheet_ca.setColumnWidth(1, (xssfSheet_ca.getColumnWidth(1))+(short)2048); // 1번째 컬럼 넓이 조절
 			xssfSheet_ca.setColumnWidth(2, (xssfSheet_ca.getColumnWidth(2))+(short)2048); // 2번째 컬럼 넓이 조절
 			xssfSheet_ca.setColumnWidth(3, (xssfSheet_ca.getColumnWidth(3))+(short)2048); // 2번째 컬럼 넓이 조절
@@ -704,7 +726,7 @@ public class DBcon {
 	
 			String path = "C:/test_out/";
 					
-			String localFile = path + "AI_HUB_51[" + yesterday + "]" + ".xlsx";
+			String localFile = path + "AI_HUB_73[" + yesterday + "]" + ".xlsx";
 			
 			File file = new File(localFile);
 			FileOutputStream fos = null;
@@ -718,6 +740,9 @@ public class DBcon {
 			}
 			catch(Exception e){
 				e.printStackTrace();
+			} finally {
+				closeSSH();
+				System.out.println("SSH 연결 해제 -끝-");
 			}
 
 	}
@@ -728,6 +753,3 @@ public class DBcon {
 	
 	
 }
-
-
-
